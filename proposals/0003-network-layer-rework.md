@@ -1,29 +1,25 @@
 # Rework Network Layer
 
-* Proposal: [CE-0003](0003-netowrk-layer-rework.md)
-* Author: [Joseph Noir](https://github.com/josephnoir)
-
+- Proposal: [CE-0003](0003-netowrk-layer-rework.md)
+- Author: [Joseph Noir](https://github.com/josephnoir)
 
 ## Introduction
 
 Distributed systems are a key environment of the actor frameworks. From the beginning CAF had a strong coupling to TCP. As a central entity the BASP broker is a bottle neck for communication and hinders scalability. While support for UDP was added in recent years, extending the network layer to handle new protocols requires adjustments throughout the stack.
 
-
 ## Motivation
 
 The existing network layer has a few problems:
 
-* It cannot fully use the bandwidth of standard network interfaces.
-* Extending the network layer with new protocols or functionality requires changes throughout the whole stack.
-* No multi-threading support.
+- It cannot fully use the bandwidth of standard network interfaces.
+- Extending the network layer with new protocols or functionality requires changes throughout the whole stack.
+- No multi-threading support.
 
 This proposal introduces a new design for the network layer. Reworked event handlers can be configured with a transport policy for communication and a protocol policy to use on top of the protocol. For the standard actor-to-actor communication this could be TCP as a transport with BASP as a protocol on top. Serialization is no longer handled by a central entity but distributed among actors that want to send data over the network.
-
 
 ## Proposed Solution
 
 A detailed explanation of the proposal.
-
 
 ### Multiplexer
 
@@ -31,15 +27,14 @@ The major new feature is multi-threading. Since we have bottlenecks elsewhere, I
 
 Some links on multi-threaded multiplexing for later:
 
-* [epoll](https://stackoverflow.com/questions/14584833/multithreaded-epoll), [more epoll](https://stackoverflow.com/questions/7058737/is-epoll-thread-safe), [hmmm](https://www.reddit.com/r/C_Programming/comments/7bnscf/multithreaded_epoll_server_design/)
-* [kqueue](https://lists.freebsd.org/pipermail/freebsd-hackers/2004-July/007655.html), [more kqueue](https://stackoverflow.com/questions/25228938/tcp-server-workers-with-kqueue)
+- [epoll](https://stackoverflow.com/questions/14584833/multithreaded-epoll), [more epoll](https://stackoverflow.com/questions/7058737/is-epoll-thread-safe), [hmmm](https://www.reddit.com/r/C_Programming/comments/7bnscf/multithreaded_epoll_server_design/)
+- [kqueue](https://lists.freebsd.org/pipermail/freebsd-hackers/2004-July/007655.html), [more kqueue](https://stackoverflow.com/questions/25228938/tcp-server-workers-with-kqueue)
 
 The `default_multiplexer` hosts a lot of socket-specific functionality at the moment. Part of this will be useful in for this design and should be cleaned up accordingly.
 
-
 ### Socket Manager
 
-This class existed in form of the `event_handler` before. Since it takes ownership of the socket it handles it is renamed to have the name better fit its purpose. Socket managers run in the multiplexer thread and are scheduled when an event on their socket happens. 
+This class existed in form of the `event_handler` before. Since it takes ownership of the socket it handles it is renamed to have the name better fit its purpose. Socket managers run in the multiplexer thread and are scheduled when an event on their socket happens.
 
 Each socket manager has a `data` queue that stores data to send via its socket. Each queue element stores a buffer with the serialized payload and the related mailbox element. Storing the serialized payload allows us to perform the serialization in a separate thread. Since the mailbox element itself contains information such as the destination it might be important for building the complete packet or addressing the right endpoint.
 
@@ -120,7 +115,6 @@ struct communication_policy {
 };
 ```
 
-
 ### Transport Policy
 
 The transport policy abstracts over a transport protocol, i.e, sending and receiving data as well as creating sockets and establishing communication with remote endpoints.
@@ -140,7 +134,7 @@ struct transport_policy {
                     socket_manager& sm);
 
   // Read event from the multiplexer
-  // 
+  //
   error read_event(communication_policy& cp,
                    socket_manager& sm);
 
@@ -167,7 +161,6 @@ struct transport_policy {
 };
 ```
 
-
 ### Proxy
 
 Benchmarks showed that the BASP broker spends a lot of time with message serialization. To remove this bottleneck serialization will be handled by the proxy before handing the message off to the network layer.
@@ -185,10 +178,9 @@ struct serializing_proxy : public actor_proxy
 };
 ```
 
-*Future:*
+_Future:_
 
-* If serialization remains as to be the limiting factor for network communication we should examine the possibility to slim down the serialization effort or look into a parallelization similar to the ongoing/recent [deserialization rework](https://github.com/actor-framework/actor-framework/tree/topic/basp-worker).
-
+- If serialization remains as to be the limiting factor for network communication we should examine the possibility to slim down the serialization effort or look into a parallelization similar to the ongoing/recent [deserialization rework](https://github.com/actor-framework/actor-framework/tree/topic/basp-worker).
 
 ### Overview
 
@@ -206,17 +198,13 @@ For sending, the transport policy gets called with the payload, the mailbox elem
 
 ##### Receiving
 
-
 #### User-space-multiplexed Protocols
 
-doorman + scribe, 
-
-
+doorman + scribe,
 
 ## Impact on Existing Code
 
 What changes to the existing code base are required?
-
 
 ## Alternatives
 
